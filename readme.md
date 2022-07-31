@@ -1,4 +1,12 @@
-1. create database account with table user , which should contain three columns: name, email and password each being of type varchar
+1. create database account with table user, as shown below
+    
+    create table user(
+        id integer not null auto_increment,
+        username varchar(30) not null,
+        email varchar(40) not null,
+        password varchar(40) not null,
+        PRIMARY KEY(id)
+    );
 
 2. setup code as specified
 

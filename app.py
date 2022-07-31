@@ -3,7 +3,7 @@ from flask_mysqldb import MySQL
 import MySQLdb.cursors
 import re
 
-app = Flask(__name__)
+app = Flask(__name__,template_folder='templates')
 
 # Change this to your secret key (can be anything, it's for extra protection)
 app.secret_key = 'your secret key'
@@ -13,7 +13,7 @@ app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DB'] = 'account'
-app.config['FLASK_APP'] = "main.py"
+app.config['FLASK_APP'] = "app.py"
 
 # Intialize MySQL
 mysql = MySQL(app)
@@ -33,7 +33,7 @@ def login():
         password = request.form['password']
         # Check if account exists using MySQL
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('SELECT * FROM user WHERE name = %s AND password = %s', (name, password,))
+        cursor.execute('SELECT * FROM user WHERE username = %s AND password = %s', (name, password,))
         # Fetch one record and return result
         account = cursor.fetchone()
         # If account exists in user table in out database
@@ -41,7 +41,7 @@ def login():
             # Create session data, we can access this data in other routes
             session['loggedin'] = True
             session['id'] = account['id']
-            session['name'] = account['name']
+            session['name'] = account['username']
             # Redirect to home page
             return redirect(url_for('home'))
         else:
@@ -75,8 +75,9 @@ def register():
         email = request.form['email']
                 # Check if account exists using MySQL
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('SELECT * FROM user WHERE name = %s', (name,))
+        cursor.execute('SELECT * FROM user WHERE username = %s', (name,))
         account = cursor.fetchone()
+        
         # If account exists show error and validation checks
         if account:
             msg = 'Account already exists!'
@@ -88,7 +89,7 @@ def register():
             msg = 'Please fill out the form!'
         else:
             # Account doesnt exists and the form data is valid, now insert new account into user table
-            cursor.execute('INSERT INTO user VALUES (%s, %s, %s)', (name,email,password))
+            cursor.execute('INSERT INTO user(username, email, password) VALUES(%s, %s, %s)', (name, email,password,))
             mysql.connection.commit()
             msg = 'You have successfully registered!'
     elif request.method == 'POST':
@@ -104,5 +105,18 @@ def home():
     if 'loggedin' in session:
         # User is loggedin show them the home page
         return render_template('home.html', name=session['name'])
+    # User is not loggedin redirect to login page
+    return redirect(url_for('login'))
+
+@app.route('/profile')
+def profile():
+    # Check if user is loggedin
+    if 'loggedin' in session:
+        # We need all the account info for the user so we can display it on the profile page
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('SELECT * FROM user WHERE id = %s', (session['id'],))
+        account = cursor.fetchone()
+        # Show the profile page with account info
+        return render_template('profile.html', account=account)
     # User is not loggedin redirect to login page
     return redirect(url_for('login'))
